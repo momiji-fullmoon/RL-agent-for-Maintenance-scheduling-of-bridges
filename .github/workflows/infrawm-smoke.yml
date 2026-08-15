@@ -1,0 +1,24 @@
+name: InfraAWM smoke
+
+on:
+  push:
+    branches:
+      - infrawm-agentic-world-model
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-infrawm.txt pytest
+      - run: pytest -q tests/test_infrawm.py
+      - run: python scripts/run_infrawm_smoke.py --output results/infrawm_smoke.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: infrawm-smoke-results
+          path: results/infrawm_smoke.json
