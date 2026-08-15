@@ -1,0 +1,56 @@
+name: InfraAWM FHWA data
+
+on:
+  push:
+    branches:
+      - infrawm-agentic-world-model
+    paths:
+      - '.github/workflows/infrawm-data.yml'
+      - 'scripts/download_fhwa_nbi.py'
+  workflow_dispatch:
+    inputs:
+      state:
+        description: Two-letter state code
+        required: true
+        default: CA
+      start_year:
+        description: First year
+        required: true
+        default: '1992'
+      end_year:
+        description: Last year
+        required: true
+        default: '2023'
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Resolve parameters
+        id: p
+        shell: bash
+        run: |
+          echo "state=${{ inputs.state || 'CA' }}" >> "$GITHUB_OUTPUT"
+          echo "start=${{ inputs.start_year || '1992' }}" >> "$GITHUB_OUTPUT"
+          echo "end=${{ inputs.end_year || '2023' }}" >> "$GITHUB_OUTPUT"
+      - name: Download FHWA NBI
+        run: >-
+          python scripts/download_fhwa_nbi.py
+          --state "${{ steps.p.outputs.state }}"
+          --start-year "${{ steps.p.outputs.start }}"
+          --end-year "${{ steps.p.outputs.end }}"
+      - name: Manifest
+        shell: bash
+        run: |
+          find data/fhwa_nbi -type f -maxdepth 1 -printf '%f,%s\n' | sort > data/fhwa_nbi/manifest.csv
+          du -sh data/fhwa_nbi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fhwa-nbi-${{ steps.p.outputs.state }}-${{ steps.p.outputs.start }}-${{ steps.p.outputs.end }}
+          path: data/fhwa_nbi/
+          retention-days: 7
